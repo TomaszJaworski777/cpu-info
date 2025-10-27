@@ -316,34 +316,47 @@ fn to_wstring(s: &str) -> Vec<u16> {
         .collect()
 }
 
-fn read_processor_policy() -> (u32,u32,String) {
+fn read_processor_policy() -> (u32, u32, String) {
     use windows::Win32::System::Power::*;
     use windows::core::GUID;
     unsafe {
         let mut scheme_ptr = std::ptr::null_mut();
-        if PowerGetActiveScheme(None, &mut scheme_ptr).is_err() { return (100,100,"unknown".into()); }
+        if PowerGetActiveScheme(None, &mut scheme_ptr).is_err() {
+            return (100, 100, "unknown".into());
+        }
         let scheme = *scheme_ptr;
 
         // GUIDs for min/max processor state
-        const GUID_PROCESSOR_SETTINGS_SUBGROUP: GUID = GUID::from_u128(0x54533251_82be_4824_96c1_47b60b740d00);
-        const GUID_PROCESSOR_THROTTLE_MINIMUM: GUID = GUID::from_u128(0x893dee8e_2bef_41e0_89c6_b55d0929964c);
-        const GUID_PROCESSOR_THROTTLE_MAXIMUM: GUID = GUID::from_u128(0xbc5038f7_23e0_4960_96da_33abaf5935ec);
+        const GUID_PROCESSOR_SETTINGS_SUBGROUP: GUID =
+            GUID::from_u128(0x54533251_82be_4824_96c1_47b60b740d00);
+        const GUID_PROCESSOR_THROTTLE_MINIMUM: GUID =
+            GUID::from_u128(0x893dee8e_2bef_41e0_89c6_b55d0929964c);
+        const GUID_PROCESSOR_THROTTLE_MAXIMUM: GUID =
+            GUID::from_u128(0xbc5038f7_23e0_4960_96da_33abaf5935ec);
 
-        let mut typ = 0u32; let mut sz = 4u32;
-        let mut min = 100u32; let mut max = 100u32;
+        let mut typ = 0u32;
+        let mut sz = 4u32;
+        let mut min = 100u32;
+        let mut max = 100u32;
 
         let _ = PowerReadACValue(
-            None, Some(&scheme),
+            None,
+            Some(&scheme),
             Some(&GUID_PROCESSOR_SETTINGS_SUBGROUP),
             Some(&GUID_PROCESSOR_THROTTLE_MINIMUM),
-            Some(&mut typ), Some((&mut min as *mut u32) as *mut u8), Some(&mut sz)
+            Some(&mut typ),
+            Some((&mut min as *mut u32) as *mut u8),
+            Some(&mut sz),
         );
         sz = 4;
         let _ = PowerReadACValue(
-            None, Some(&scheme),
+            None,
+            Some(&scheme),
             Some(&GUID_PROCESSOR_SETTINGS_SUBGROUP),
             Some(&GUID_PROCESSOR_THROTTLE_MAXIMUM),
-            Some(&mut typ), Some((&mut max as *mut u32) as *mut u8), Some(&mut sz)
+            Some(&mut typ),
+            Some((&mut max as *mut u32) as *mut u8),
+            Some(&mut sz),
         );
 
         (min, max, "-".into())

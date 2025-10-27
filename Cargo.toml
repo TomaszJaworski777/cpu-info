@@ -13,3 +13,7 @@ windows = { version = "*", features = [
   "Win32_System_SystemServices",
   "Win32_Foundation"
 ] }
+term_size = "0.3.2"
+term_cursor = "0.2.1"
+colored = "*"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
