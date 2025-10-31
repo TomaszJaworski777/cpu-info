@@ -133,11 +133,6 @@ impl CpuInfo for WindowsCpuInfo {
         &self.0
     }
 
-    fn power_plan(&self) -> String {
-        let (min, max, policy) = read_processor_policy();
-        format!("{policy} [{min}%, {max}%]")
-    }
-
     fn uptime(&self) -> f64 {
         unsafe { GetTickCount64() as f64 / 1000.0 }
     }
@@ -194,45 +189,14 @@ fn topo_and_caches() -> (usize, usize, usize, usize, usize) {
         p = unsafe { p.add(size) };
     }
 
-    let mut cache = [0, 0, 0];
-    for i in 0.. {
-        let (mut eax, mut ebx, mut ecx, _) = cpuid(4, i);
-        let mut cache_type = eax & 0x1F;
-        if cache_type == 0 {
-            (eax, ebx, ecx, _) = cpuid(0x8000_001D, i);
-            cache_type = eax & 0x1F;
-            if cache_type == 0 {
-                break;
-            }
-        }
-
-        let level = (eax >> 5) & 0x7;
-        let line_size = (ebx & 0xFFF) + 1;
-        let partitions = ((ebx >> 12) & 0x3FF) + 1;
-        let ways = ((ebx >> 22) & 0x3FF) + 1;
-        let sets = ecx + 1;
-        let size = ways * partitions * line_size * sets;
-
-        let shared_logical = ((eax >> 14) & 0xFFF) + 1;
-
-        match (cache_type, level) {
-            (1, 1) => cache[0] = size,
-            (2, 1) => cache[0] += size,
-            (3, 2) => cache[1] = size,
-            (3, 3) => {
-                let total_l3 = size * (threads as u32 / shared_logical);
-                cache[2] = total_l3;
-            }
-            _ => {}
-        }
-    }
+    let (l1, l2, l3) = cache_size(cores, threads);
 
     (
         cores,
         threads,
-        cache[0] as usize * cores,
-        cache[1] as usize * cores,
-        cache[2] as usize,
+        l1,
+        l2,
+        l3,
     )
 }
 
@@ -316,49 +280,48 @@ fn to_wstring(s: &str) -> Vec<u16> {
         .collect()
 }
 
-fn read_processor_policy() -> (u32, u32, String) {
-    use windows::Win32::System::Power::*;
-    use windows::core::GUID;
-    unsafe {
-        let mut scheme_ptr = std::ptr::null_mut();
-        if PowerGetActiveScheme(None, &mut scheme_ptr).is_err() {
-            return (100, 100, "unknown".into());
-        }
-        let scheme = *scheme_ptr;
-
-        // GUIDs for min/max processor state
-        const GUID_PROCESSOR_SETTINGS_SUBGROUP: GUID =
-            GUID::from_u128(0x54533251_82be_4824_96c1_47b60b740d00);
-        const GUID_PROCESSOR_THROTTLE_MINIMUM: GUID =
-            GUID::from_u128(0x893dee8e_2bef_41e0_89c6_b55d0929964c);
-        const GUID_PROCESSOR_THROTTLE_MAXIMUM: GUID =
-            GUID::from_u128(0xbc5038f7_23e0_4960_96da_33abaf5935ec);
-
-        let mut typ = 0u32;
-        let mut sz = 4u32;
-        let mut min = 100u32;
-        let mut max = 100u32;
-
-        let _ = PowerReadACValue(
-            None,
-            Some(&scheme),
-            Some(&GUID_PROCESSOR_SETTINGS_SUBGROUP),
-            Some(&GUID_PROCESSOR_THROTTLE_MINIMUM),
-            Some(&mut typ),
-            Some((&mut min as *mut u32) as *mut u8),
-            Some(&mut sz),
-        );
-        sz = 4;
-        let _ = PowerReadACValue(
-            None,
-            Some(&scheme),
-            Some(&GUID_PROCESSOR_SETTINGS_SUBGROUP),
-            Some(&GUID_PROCESSOR_THROTTLE_MAXIMUM),
-            Some(&mut typ),
-            Some((&mut max as *mut u32) as *mut u8),
-            Some(&mut sz),
-        );
-
-        (min, max, "-".into())
+pub fn cache_size(cores: usize, threads: usize) -> (usize, usize, usize) {
+    let max_ext = cpuid(0x8000_0000, 0).0;
+    if max_ext >= 0x8000_001D {
+        cache_size_universal(0x8000_001D, cores, threads)
+    } else {
+        cache_size_universal(4, cores, 0)
     }
+}
+
+fn cache_size_universal(func: u32, cores: usize, threads_shared: usize) -> (usize, usize, usize) {
+    let mut cache = [0, 0, 0];
+    for i in 0.. {
+        let (eax, ebx, ecx, _) = cpuid(func, i);
+        let cache_type = eax & 0x1F;
+        if cache_type == 0 {
+            break;
+        }
+
+        let level = (eax >> 5) & 0x7;
+        let line_size = (ebx & 0xFFF) + 1;
+        let partitions = ((ebx >> 12) & 0x3FF) + 1;
+        let ways = ((ebx >> 22) & 0x3FF) + 1;
+        let sets = ecx + 1;
+        let size = ways * partitions * line_size * sets;
+
+        let shared_logical = if threads_shared > 0 {
+            threads_shared as u32 / (((eax >> 14) & 0xFFF) + 1)
+        } else {
+            1
+        };
+
+        match (cache_type, level) {
+            (1, 1) => cache[0] += size,
+            (2, 1) => cache[0] += size,
+            (3, 2) => cache[1] += size,
+            (3, 3) => cache[2] += size * shared_logical,
+            _ => {}
+        }
+    }
+    (
+        cache[0] as usize * cores,
+        cache[1] as usize * cores,
+        cache[2] as usize,
+    )
 }

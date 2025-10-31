@@ -269,9 +269,7 @@ where
         "{}",
         format!(
             " │{}│ {} │ {}│ ",
-            format!(" Power Plan: {}", info.power_plan())
-                .align_to_left(side_panel_width - 2)
-                .white(),
+            " ".align_to_center(side_panel_width - 2),
             format!(
                 "{}{}{}",
                 " ".repeat(10),

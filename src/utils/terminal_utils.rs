@@ -19,6 +19,7 @@ pub fn clear_terminal_screen() {
     };
 }
 
+#[allow(unused)]
 pub fn create_loading_bar(
     length: usize,
     fill: f32,
@@ -42,6 +43,7 @@ pub fn create_loading_bar(
     result
 }
 
+#[allow(unused)]
 pub fn seconds_to_string(seconds: u128) -> String {
     let hh = seconds / 3600;
     let mm = (seconds - (hh * 3600)) / 60;
@@ -86,6 +88,7 @@ pub fn time_to_string(miliseconds: u128) -> String {
     result.trim().to_string()
 }
 
+#[allow(unused)]
 pub fn number_to_string(number: u128) -> String {
     if number < 1000 {
         return format!("{number}");
@@ -130,6 +133,7 @@ fn round(number: f64) -> f64 {
     (number * 100.0).round() / 100.0
 }
 
+#[allow(unused)]
 pub trait AlignString {
     fn align_to_right(&self, len: usize) -> String;
     fn align_to_left(&self, len: usize) -> String;

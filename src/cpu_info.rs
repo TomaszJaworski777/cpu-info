@@ -8,7 +8,6 @@ pub trait CpuInfo {
 
     fn static_data(&self) -> &CpuData;
 
-    fn power_plan(&self) -> String;
     fn uptime(&self) -> f64;
 }
 
