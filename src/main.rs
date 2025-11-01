@@ -10,16 +10,15 @@ use crate::{
 mod cpu_info;
 mod utils;
 
+#[cfg(target_os = "windows")]
+type HostCpuInfo = crate::cpu_info::WindowsCpuInfo;
+#[cfg(target_os = "linux")]
+type HostCpuInfo = crate::cpu_info::LinuxCpuInfo;
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+compile_error!("Target OS not supported");
+
 fn main() {
-    let cpu_info = if cfg!(target_os = "windows") {
-        use crate::cpu_info::WindowsCpuInfo;
-        WindowsCpuInfo::new()
-    } else if cfg!(target_os = "linux") {
-        use crate::cpu_info::WindowsCpuInfo;
-        WindowsCpuInfo::new() //TODO: Change to linux
-    } else {
-        panic!("Target OS not supported!")
-    };
+    let cpu_info = HostCpuInfo::new();
 
     let mut last_width = 0;
 

@@ -1,7 +1,14 @@
-mod linux_cpu_info;
+#[cfg(target_os = "windows")]
 mod windows_cpu_info;
+#[cfg(target_os = "linux")]
+mod linux_cpu_info;
 
+#[allow(unused)]
+#[cfg(target_os = "windows")]
 pub use windows_cpu_info::WindowsCpuInfo;
+#[allow(unused)]
+#[cfg(target_os = "linux")]
+pub use linux_cpu_info::LinuxCpuInfo;
 
 pub trait CpuInfo {
     fn new() -> Self;
