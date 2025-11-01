@@ -208,7 +208,7 @@ where
         format!(
             " │{}│ {} │ {}│ ",
             format!(
-                " Tubdo clock speed: {}MHz",
+                " Turbo clock speed: {}MHz",
                 info.static_data().clock_speed_turbo()
             )
             .align_to_left(side_panel_width - 2)
